@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2f6fed">
+<meta name="mobile-web-app-capable" content="yes">
+<title>相机台账</title>
+<style>
+:root{
+  --bg:#f2f4f8;--card:#fff;--line:#e8ebf0;--text:#1a1f26;--muted:#8a93a3;
+  --brand:#2f6fed;--green:#0a9c62;--red:#e0453a;--amber:#d98300;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--text);
+  font:15px/1.5 system-ui,-apple-system,"PingFang SC","Noto Sans SC",sans-serif;
+  padding-bottom:calc(70px + env(safe-area-inset-bottom));
+  overscroll-behavior-y:contain;
+  -webkit-user-select:none;user-select:none;
+}
+input,textarea,select{-webkit-user-select:text;user-select:text}
+
+/* 顶栏 */
+.topbar{
+  position:sticky;top:0;z-index:30;background:var(--brand);color:#fff;
+  padding:calc(env(safe-area-inset-top) + 10px) 16px 12px;
+  display:flex;align-items:center;gap:10px;
+}
+.topbar h1{font-size:17px;margin:0;flex:1;font-weight:600;letter-spacing:.3px}
+.icon-btn{
+  background:rgba(255,255,255,.18);border:none;color:#fff;border-radius:10px;
+  width:38px;height:38px;font-size:17px;display:flex;align-items:center;justify-content:center;
+}
+.icon-btn:active{background:rgba(255,255,255,.3)}
+
+/* 统计 */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px 4px}
+.stat{background:var(--card);border-radius:14px;padding:12px 14px;box-shadow:0 1px 3px rgba(20,30,50,.05)}
+.stat .k{font-size:12px;color:var(--muted)}
+.stat .v{font-size:19px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums}
+.stat.blue .v{color:var(--brand)}
+.stat.green .v{color:var(--green)}
+
+/* 搜索 + 筛选 */
+.tools{padding:10px 16px 0;display:flex;gap:8px}
+.tools input{
+  flex:1;font:inherit;font-size:15px;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;padding:10px 14px;outline:none;
+}
+.tools input:focus{border-color:var(--brand)}
+.chips{display:flex;gap:8px;padding:10px 16px 4px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.chips::-webkit-scrollbar{display:none}
+.chip{
+  flex:none;font-size:13px;padding:7px 14px;border-radius:20px;
+  background:var(--card);border:1px solid var(--line);color:var(--muted);
+}
+.chip.on{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:500}
+
+/* 卡片列表 */
+.list{padding:10px 16px 20px;display:flex;flex-direction:column;gap:10px}
+.item{
+  background:var(--card);border-radius:14px;padding:13px 14px;
+  box-shadow:0 1px 3px rgba(20,30,50,.05);transition:transform .12s;
+}
+.item:active{transform:scale(.985)}
+.item .r1{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.brand{
+  font-size:11px;font-weight:600;color:var(--brand);background:#eaf1ff;
+  padding:2px 8px;border-radius:6px;flex:none;
+}
+.model{font-size:15px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.badge{font-size:11px;padding:2px 9px;border-radius:20px;flex:none}
+.badge.stock{background:#eef2ff;color:#3b5bdb}
+.badge.sold{background:#e7f6ee;color:var(--green)}
+.badge.repair{background:#fdf3e3;color:var(--amber)}
+.badge.return{background:#f1f2f4;color:var(--muted)}
+.item .r2{font-size:12px;color:var(--muted);display:flex;gap:12px;margin-bottom:9px}
+.item .r3{
+  display:flex;gap:10px;padding-top:9px;border-top:1px dashed var(--line);
+  font-size:13px;font-variant-numeric:tabular-nums;
+}
+.item .r3 > div{flex:1;display:flex;flex-direction:column;gap:2px}
+.item .r3 em{font-style:normal;font-size:11px;color:var(--muted)}
+.item .r3 b{font-weight:600}
+.pf-pos{color:var(--green)}
+.pf-neg{color:var(--red)}
+.empty{text-align:center;color:var(--muted);font-size:14px;padding:50px 20px;line-height:1.8}
+
+/* 汇总 */
+.sum{padding:12px 16px 20px}
+.sum-tabs{display:flex;gap:8px;margin-bottom:12px}
+.sum-tabs button{
+  flex:1;font:inherit;font-size:14px;padding:9px;border-radius:11px;
+  background:var(--card);border:1px solid var(--line);color:var(--muted);
+}
+.sum-tabs button.on{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+.sum-card{background:var(--card);border-radius:14px;padding:4px 0;margin-bottom:10px;box-shadow:0 1px 3px rgba(20,30,50,.05)}
+.sum-row{display:flex;align-items:center;padding:11px 15px;border-bottom:1px solid var(--line);font-size:14px}
+.sum-row:last-child{border-bottom:none}
+.sum-row .m{width:74px;font-weight:600;font-variant-numeric:tabular-nums}
+.sum-row .c{width:44px;color:var(--muted);font-size:12px}
+.sum-row .n{flex:1;text-align:right;font-variant-numeric:tabular-nums}
+.sum-row .p{width:96px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.sum-total{background:#eef3ff;border-radius:14px;padding:13px 15px;display:flex;justify-content:space-between;font-weight:700}
+.sum-total span{font-variant-numeric:tabular-nums}
+
+/* 底部标签栏 */
+.tabbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:35;display:flex;
+  background:rgba(255,255,255,.94);backdrop-filter:blur(12px);
+  border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tabbar button{
+  flex:1;background:none;border:none;font:inherit;font-size:11px;color:var(--muted);
+  padding:8px 0 9px;display:flex;flex-direction:column;align-items:center;gap:3px;
+}
+.tabbar button .ic{font-size:19px;line-height:1}
+.tabbar button.on{color:var(--brand);font-weight:600}
+
+/* 悬浮新增 */
+.fab{
+  position:fixed;right:18px;bottom:calc(78px + env(safe-area-inset-bottom));z-index:36;
+  width:54px;height:54px;border-radius:50%;border:none;background:var(--brand);color:#fff;
+  font-size:28px;line-height:1;box-shadow:0 6px 18px rgba(47,111,237,.4);
+  display:flex;align-items:center;justify-content:center;
+}
+.fab:active{transform:scale(.94)}
+
+/* 弹层 */
+.mask{position:fixed;inset:0;background:rgba(15,20,30,.45);z-index:40;opacity:0;pointer-events:none;transition:opacity .22s}
+.mask.show{opacity:1;pointer-events:auto}
+.sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:41;background:#fff;
+  border-radius:20px 20px 0 0;max-height:93vh;display:flex;flex-direction:column;
+  transform:translateY(102%);transition:transform .27s cubic-bezier(.32,.72,0,1);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.sheet.show{transform:translateY(0)}
+.sheet-head{
+  display:flex;align-items:center;padding:14px 16px 10px;border-bottom:1px solid var(--line);
+}
+.sheet-head h3{margin:0;font-size:16px;flex:1}
+.sheet-head button{
+  background:none;border:none;font:inherit;font-size:15px;color:var(--muted);padding:6px 8px;
+}
+.sheet-head button.primary{color:var(--brand);font-weight:600}
+.sheet-body{overflow-y:auto;padding:14px 16px 24px;-webkit-overflow-scrolling:touch}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+.field input,.field select,.field textarea{
+  width:100%;font:inherit;font-size:16px;color:var(--text);background:#f7f8fa;
+  border:1px solid transparent;border-radius:11px;padding:11px 13px;outline:none;
+}
+.field input:focus,.field select:focus,.field textarea:focus{background:#fff;border-color:var(--brand)}
+.field-row{display:flex;gap:10px}
+.field-row .field{flex:1}
+.hint{font-size:12px;color:var(--muted);line-height:1.6;margin-top:6px}
+.btn-danger{color:var(--red)!important}
+.del-row{margin-top:18px;text-align:center}
+.del-row button{
+  background:none;border:none;font:inherit;font-size:14px;color:var(--red);padding:10px;
+}
+textarea.bak{height:200px;font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.5}
+.bak-btns{display:flex;gap:10px;margin-top:12px}
+.bak-btns button{
+  flex:1;font:inherit;font-size:15px;padding:12px;border-radius:11px;
+  border:1px solid var(--line);background:#fff;color:var(--text);
+}
+.bak-btns button.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.hidden{display:none}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>相机台账</h1>
+  <button class="icon-btn" id="bakBtn" title="备份/恢复">⇅</button>
+</header>
+
+<div class="stats" id="stats"></div>
+
+<!-- 库存视图 -->
+<main id="viewList">
+  <div class="tools"><input id="search" placeholder="搜索品牌 / 型号 / 编号"></div>
+  <div class="chips" id="chips">
+    <button class="chip on" data-st="">全部</button>
+    <button class="chip" data-st="在库">在库</button>
+    <button class="chip" data-st="已售">已售</button>
+    <button class="chip" data-st="维修中">维修中</button>
+    <button class="chip" data-st="退货">退货</button>
+  </div>
+  <div class="list" id="list"></div>
+</main>
+
+<!-- 汇总视图 -->
+<main id="viewSum" class="hidden">
+  <div class="sum">
+    <div class="sum-tabs">
+      <button data-tab="month" class="on">按月</button>
+      <button data-tab="year">按年</button>
+    </div>
+    <div id="sumBody"></div>
+  </div>
+</main>
+
+<button class="fab" id="fab">＋</button>
+
+<nav class="tabbar">
+  <button data-view="list" class="on"><span class="ic">📦</span>库存</button>
+  <button data-view="sum"><span class="ic">📊</span>汇总</button>
+</nav>
+
+<!-- 编辑/新增弹层 -->
+<div class="mask" id="mask"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-head">
+    <button id="sheetCancel">取消</button>
+    <h3 id="sheetTitle">新增入库</h3>
+    <button class="primary" id="sheetSave">保存</button>
+  </div>
+  <div class="sheet-body">
+    <form id="form" autocomplete="off">
+      <div class="field-row">
+        <div class="field">
+          <label>品牌</label>
+          <input name="brand" list="brandList" placeholder="佳能">
+        </div>
+        <div class="field">
+          <label>型号 *</label>
+          <input name="model" required placeholder="EOS R5">
+        </div>
+      </div>
+      <datalist id="brandList">
+        <option>佳能</option><option>尼康</option><option>索尼</option><option>富士</option>
+        <option>松下</option><option>徕卡</option><option>奥林巴斯</option><option>宾得</option>
+        <option>哈苏</option><option>理光</option><option>适马</option><option>飞思</option>
+      </datalist>
+
+      <div class="field-row">
+        <div class="field">
+          <label>进货价 (元) *</label>
+          <input name="cost" type="number" step="0.01" min="0" required placeholder="0.00" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label>入库日期</label>
+          <input name="inDate" type="date">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>状态</label>
+        <select name="status">
+          <option>在库</option><option>已售</option><option>维修中</option><option>退货</option>
+        </select>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>处理方式</label>
+          <input name="dealType" placeholder="闲鱼 / 线下">
+        </div>
+        <div class="field">
+          <label>售价 (元)</label>
+          <input name="salePrice" type="number" step="0.01" min="0" placeholder="0.00" inputmode="decimal">
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>实际收入 (元)</label>
+          <input name="actualIncome" type="number" step="0.01" min="0" placeholder="扣费后到账" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label>售出日期</label>
+          <input name="soldDate" type="date">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>备注</label>
+        <input name="note" placeholder="选填">
+      </div>
+      <div class="hint">实际收入不填时，利润按「售价 − 进货价」计算。</div>
+      <div class="del-row hidden" id="delRow">
+        <button type="button" id="delBtn" class="btn-danger">删除此条目</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 备份弹层 -->
+<div class="sheet" id="bakSheet">
+  <div class="sheet-head">
+    <button id="bakCancel">关闭</button>
+    <h3>备份 / 恢复</h3>
+    <span style="width:44px"></span>
+  </div>
+  <div class="sheet-body">
+    <div class="field">
+      <label>数据（可全选复制保存；粘贴后点「恢复」覆盖）</label>
+      <textarea class="bak" id="bakText" spellcheck="false"></textarea>
+    </div>
+    <div class="bak-btns">
+      <button id="copyBtn">复制</button>
+      <button id="restoreBtn" class="primary">恢复</button>
+    </div>
+    <div class="hint">
+      清除应用数据或卸载 App 会丢失本地记录，建议每周复制一次文本保存到备忘录或电脑。
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var KEY='camera_stock_v1';
+  var items=[], editId=null, filterStatus='', sumTab='month', view='list';
+
+  function $(s){return document.querySelector(s);}
+  function num(v){var n=parseFloat(v);return isNaN(n)?0:n;}
+  function pad2(n){return String(n).padStart(2,'0');}
+  function today(){
+    var d=new Date();
+    return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+  }
+  function money(v){
+    var n=num(v);
+    return (n<0?'-':'')+'¥'+Math.abs(n).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+  function esc(s){
+    return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function toast(msg){
+    var d=document.createElement('div');
+    d.textContent=msg;
+    d.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);'+
+      'background:rgba(20,25,35,.86);color:#fff;padding:11px 20px;border-radius:10px;'+
+      'font-size:14px;z-index:99;pointer-events:none';
+    document.body.appendChild(d);
+    setTimeout(function(){d.remove();},1400);
+  }
+
+  /* ---------- 数据 ---------- */
+  function load(){
+    try{
+      var raw=localStorage.getItem(KEY);
+      items=raw?JSON.parse(raw):[];
+      if(!Array.isArray(items)) items=[];
+    }catch(e){items=[];}
+    items.forEach(function(it){ if(it.brand==null) it.brand=''; });
+  }
+  function save(){localStorage.setItem(KEY,JSON.stringify(items));}
+
+  function genId(dateStr){
+    var p=(dateStr||today()).replace(/-/g,''), max=0;
+    items.forEach(function(it){
+      var id=it.id||'';
+      if(id.indexOf(p+'-')===0){
+        var n=parseInt(id.slice(p.length+1),10);
+        if(!isNaN(n)&&n>max) max=n;
+      }
+    });
+    return p+'-'+pad2(max+1);
+  }
+
+  function isSold(it){return (it.status||'在库')==='已售';}
+  function incomeOf(it){
+    var a=num(it.actualIncome);
+    return a>0?a:num(it.salePrice);
+  }
+  function profitOf(it){return incomeOf(it)-num(it.cost);}
+
+  /* ---------- 统计 ---------- */
+  function renderStats(){
+    var inStock=items.filter(function(it){return !isSold(it);});
+    var sold=items.filter(isSold);
+    var stockCost=inStock.reduce(function(s,it){return s+num(it.cost);},0);
+    var income=sold.reduce(function(s,it){return s+incomeOf(it);},0);
+    var profit=sold.reduce(function(s,it){return s+profitOf(it);},0);
+    $('#stats').innerHTML=
+      '<div class="stat blue"><div class="k">在库件数</div><div class="v">'+inStock.length+' 件</div></div>'+
+      '<div class="stat"><div class="k">在库占用成本</div><div class="v">'+money(stockCost)+'</div></div>'+
+      '<div class="stat"><div class="k">累计实际收入</div><div class="v">'+money(income)+'</div></div>'+
+      '<div class="stat green"><div class="k">累计利润 · 已售'+sold.length+'单</div><div class="v">'+money(profit)+'</div></div>';
+  }
+
+  /* ---------- 列表 ---------- */
+  function badgeCls(s){
+    return {'在库':'stock','已售':'sold','维修中':'repair','退货':'return'}[s]||'return';
+  }
+
+  function renderList(){
+    var q=$('#search').value.trim().toLowerCase();
+    var rows=items.filter(function(it){
+      if(filterStatus&&(it.status||'在库')!==filterStatus) return false;
+      if(q){
+        var hay=((it.brand||'')+' '+(it.model||'')+' '+(it.id||'')).toLowerCase();
+        if(hay.indexOf(q)===-1) return false;
+      }
+      return true;
+    }).sort(function(a,b){return String(b.id||'').localeCompare(String(a.id||''));});
+
+    if(rows.length===0){
+      $('#list').innerHTML='<div class="empty">还没有条目<br>点右下角 ＋ 新增第一条</div>';
+      return;
+    }
+
+    $('#list').innerHTML=rows.map(function(it){
+      var st=it.status||'在库', sold=isSold(it);
+      var showSale=(it.salePrice!==''&&it.salePrice!=null)||(it.actualIncome!==''&&it.actualIncome!=null);
+      var pf=sold?profitOf(it):null;
+      var pfCls=pf===null?'':(pf>=0?'pf-pos':'pf-neg');
+      return '<div class="item" data-id="'+esc(it.id)+'">'+
+        '<div class="r1">'+
+          (it.brand?'<span class="brand">'+esc(it.brand)+'</span>':'')+
+          '<span class="model">'+esc(it.model)+'</span>'+
+          '<span class="badge '+badgeCls(st)+'">'+esc(st)+'</span>'+
+        '</div>'+
+        '<div class="r2">'+
+          '<span>'+esc(it.id)+'</span>'+
+          '<span>入库 '+(it.inDate?esc(it.inDate.slice(5)):'-')+'</span>'+
+          (it.soldDate?'<span>售出 '+esc(it.soldDate.slice(5))+'</span>':'')+
+        '</div>'+
+        '<div class="r3">'+
+          '<div><em>进货</em><b>'+money(it.cost)+'</b></div>'+
+          '<div><em>售出</em><b>'+(showSale?money(incomeOf(it)):'—')+'</b></div>'+
+          '<div><em>'+(sold?'利润':'状态')+'</em><b class="'+pfCls+'">'+
+            (sold?money(pf):'在库中')+'</b></div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  }
+
+  /* ---------- 汇总 ---------- */
+  function renderSum(){
+    var sold=items.filter(isSold), g={};
+    sold.forEach(function(it){
+      var d=it.soldDate||it.inDate||'';
+      var k=sumTab==='month'?d.slice(0,7):d.slice(0,4);
+      if(!k) return;
+      if(!g[k]) g[k]={c:0,inc:0,cost:0,pf:0};
+      g[k].c++; g[k].inc+=incomeOf(it); g[k].cost+=num(it.cost); g[k].pf+=profitOf(it);
+    });
+    var keys=Object.keys(g).sort().reverse();
+    if(keys.length===0){
+      $('#sumBody').innerHTML='<div class="empty">还没有已售记录<br>把状态改成「已售」并填写收入后自动汇总</div>';
+      return;
+    }
+    var t={c:0,inc:0,cost:0,pf:0};
+    var html=keys.map(function(k){
+      var x=g[k];
+      t.c+=x.c; t.inc+=x.inc; t.cost+=x.cost; t.pf+=x.pf;
+      return '<div class="sum-row">'+
+        '<span class="m">'+(sumTab==='month'?k:k+'年')+'</span>'+
+        '<span class="c">'+x.c+'件</span>'+
+        '<span class="n">收 '+money(x.inc)+'</span>'+
+        '<span class="p '+(x.pf>=0?'pf-pos':'pf-neg')+'">'+money(x.pf)+'</span>'+
+      '</div>';
+    }).join('');
+    html+='<div class="sum-total"><span>合计 '+t.c+' 件</span><span class="'+
+      (t.pf>=0?'pf-pos':'pf-neg')+'">'+money(t.pf)+'</span></div>';
+    $('#sumBody').innerHTML='<div class="sum-card">'+html+'</div>'+
+      '<div class="hint">收入合计 '+money(t.inc)+' · 成本合计 '+money(t.cost)+
+      ' · 利润率 '+(t.cost>0?(t.pf/t.cost*100).toFixed(1):'0.0')+'%</div>';
+  }
+
+  function renderAll(){renderStats();renderList();renderSum();}
+
+  /* ---------- 弹层 ---------- */
+  function openSheet(it){
+    editId=it?it.id:null;
+    var F=$('#form').elements;
+    $('#sheetTitle').textContent=it?'编辑条目':'新增入库';
+    $('#delRow').classList.toggle('hidden',!it);
+    F['brand'].value=it?(it.brand||''):'';
+    F['model'].value=it?(it.model||''):'';
+    F['cost'].value=it?(it.cost==null?'':it.cost):'';
+    F['inDate'].value=it?(it.inDate||today()):today();
+    F['status'].value=it?(it.status||'在库'):'在库';
+    F['dealType'].value=it?(it.dealType||''):'';
+    F['salePrice'].value=it?(it.salePrice==null?'':it.salePrice):'';
+    F['actualIncome'].value=it?(it.actualIncome==null?'':it.actualIncome):'';
+    F['soldDate'].value=it?(it.soldDate||''):'';
+    F['note'].value=it?(it.note||''):'';
+    $('#mask').classList.add('show');
+    $('#sheet').classList.add('show');
+  }
+  function closeSheet(){
+    $('#mask').classList.remove('show');
+    $('#sheet').classList.remove('show');
+    editId=null;
+  }
+  window.closeSheet=closeSheet; // 供 Android 返回键调用
+
+  $('#form').elements['status'].addEventListener('change',function(e){
+    var F=$('#form').elements;
+    if(e.target.value==='已售'&&!F['soldDate'].value) F['soldDate'].value=today();
+  });
+
+  $('#sheetSave').addEventListener('click',function(){
+    var F=$('#form').elements;
+    var model=F['model'].value.trim();
+    if(!model){toast('请填写型号');F['model'].focus();return;}
+    var inDate=F['inDate'].value||today();
+
+    if(editId){
+      var it=items.filter(function(x){return x.id===editId;})[0];
+      if(!it){closeSheet();return;}
+      it.brand=F['brand'].value.trim();
+      it.model=model;
+      it.cost=num(F['cost'].value);
+      it.inDate=inDate;
+      it.status=F['status'].value;
+      it.dealType=F['dealType'].value.trim();
+      it.salePrice=F['salePrice'].value===''?'':num(F['salePrice'].value);
+      it.actualIncome=F['actualIncome'].value===''?'':num(F['actualIncome'].value);
+      it.soldDate=F['soldDate'].value||'';
+      it.note=F['note'].value.trim();
+      if(it.status==='已售'&&!it.soldDate) it.soldDate=today();
+    }else{
+      items.push({
+        id:genId(inDate),
+        brand:F['brand'].value.trim(),
+        model:model,
+        cost:num(F['cost'].value),
+        inDate:inDate,
+        status:F['status'].value||'在库',
+        dealType:F['dealType'].value.trim(),
+        salePrice:F['salePrice'].value===''?'':num(F['salePrice'].value),
+        actualIncome:F['actualIncome'].value===''?'':num(F['actualIncome'].value),
+        soldDate:F['soldDate'].value||'',
+        note:F['note'].value.trim(),
+        createdAt:new Date().toISOString()
+      });
+    }
+    save(); closeSheet(); renderAll(); toast('已保存');
+  });
+
+  $('#delBtn').addEventListener('click',function(){
+    if(!editId) return;
+    if(!confirm('确定删除这条记录？不可恢复')) return;
+    items=items.filter(function(x){return x.id!==editId;});
+    save(); closeSheet(); renderAll(); toast('已删除');
+  });
+
+  $('#sheetCancel').addEventListener('click',closeSheet);
+  $('#mask').addEventListener('click',function(){
+    if($('#bakSheet').classList.contains('show')) return;
+    closeSheet();
+  });
+
+  /* ---------- 备份 ---------- */
+  $('#bakBtn').addEventListener('click',function(){
+    $('#bakText').value=JSON.stringify(items,null,1);
+    $('#mask').classList.add('show');
+    $('#bakSheet').classList.add('show');
+  });
+  function closeBak(){
+    $('#mask').classList.remove('show');
+    $('#bakSheet').classList.remove('show');
+  }
+  $('#bakCancel').addEventListener('click',closeBak);
+
+  $('#copyBtn').addEventListener('click',function(){
+    var t=$('#bakText');
+    t.select(); t.setSelectionRange(0,999999);
+    var ok=false;
+    try{ ok=document.execCommand('copy'); }catch(e){}
+    if(!ok&&navigator.clipboard){
+      navigator.clipboard.writeText(t.value).then(function(){toast('已复制');});
+      return;
+    }
+    toast(ok?'已复制':'请长按文本手动复制');
+  });
+
+  $('#restoreBtn').addEventListener('click',function(){
+    var txt=$('#bakText').value.trim();
+    if(!txt){toast('请先粘贴备份文本');return;}
+    var data;
+    try{ data=JSON.parse(txt); }catch(e){ toast('格式错误，不是有效备份'); return; }
+    if(!Array.isArray(data)){toast('格式错误，应为数组');return;}
+    if(!confirm('将覆盖当前全部 '+items.length+' 条记录，确定恢复？')) return;
+    items=data.map(function(it){
+      return {
+        id:it.id||genId(it.inDate),
+        brand:it.brand||'',
+        model:it.model||'',
+        cost:num(it.cost),
+        inDate:it.inDate||today(),
+        status:it.status||'在库',
+        dealType:it.dealType||'',
+        salePrice:(it.salePrice===''||it.salePrice==null)?'':num(it.salePrice),
+        actualIncome:(it.actualIncome===''||it.actualIncome==null)?'':num(it.actualIncome),
+        soldDate:it.soldDate||'',
+        note:it.note||''
+      };
+    });
+    save(); closeBak(); renderAll(); toast('已恢复 '+items.length+' 条');
+  });
+
+  /* ---------- 交互 ---------- */
+  $('#list').addEventListener('click',function(e){
+    var card=e.target.closest('.item');
+    if(!card) return;
+    var id=card.getAttribute('data-id');
+    var it=items.filter(function(x){return x.id===id;})[0];
+    if(it) openSheet(it);
+  });
+
+  $('#fab').addEventListener('click',function(){openSheet(null);});
+
+  $('#search').addEventListener('input',renderList);
+
+  $('#chips').addEventListener('click',function(e){
+    var b=e.target.closest('.chip');
+    if(!b) return;
+    Array.prototype.forEach.call($('#chips').children,function(c){c.classList.remove('on');});
+    b.classList.add('on');
+    filterStatus=b.getAttribute('data-st');
+    renderList();
+  });
+
+  document.querySelector('.sum-tabs').addEventListener('click',function(e){
+    var b=e.target.closest('button[data-tab]');
+    if(!b) return;
+    Array.prototype.forEach.call(this.children,function(c){c.classList.remove('on');});
+    b.classList.add('on');
+    sumTab=b.getAttribute('data-tab');
+    renderSum();
+  });
+
+  document.querySelector('.tabbar').addEventListener('click',function(e){
+    var b=e.target.closest('button[data-view]');
+    if(!b) return;
+    Array.prototype.forEach.call(this.children,function(c){c.classList.remove('on');});
+    b.classList.add('on');
+    view=b.getAttribute('data-view');
+    $('#viewList').classList.toggle('hidden',view!=='list');
+    $('#viewSum').classList.toggle('hidden',view!=='sum');
+    $('#fab').style.display=view==='list'?'flex':'none';
+    window.scrollTo(0,0);
+  });
+
+  /* ---------- 初始化 ---------- */
+  load();
+  renderAll();
+})();
+</script>
+</body>
+</html>
